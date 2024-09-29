@@ -10,7 +10,7 @@
   "license": "ISC",
   "dependencies": {
     "electron": "^27.3.5",
-    "node-fetch": "^3.3.2",
+    "node-fetch": "^2.7.0",
     "openai": "^4.28.4"
   }
 }
