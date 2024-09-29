@@ -98,7 +98,8 @@ app.whenReady().then(async () => {
     const image = await webview.capturePage();
     webview.send("observer", "screenshot-end");
 
-    // const imageData = image.toJPEG(100);
+    // const imageData = image.toPNG();
+    const imageData = image.toJPEG(80);
     await controller.uploadImageData(imageData);
   }
 
