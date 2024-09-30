@@ -47,35 +47,35 @@ document.addEventListener("DOMContentLoaded", function () {
   const sendButton = document.querySelector("button#send");
   const chatContainer = document.querySelector("#chat-container");
 
-  document
-    .querySelector("#screenshot")
-    .addEventListener("click", () => ipcRenderer.send("screenshot"));
-  document
-    .querySelector("#continue")
-    .addEventListener("click", () => ipcRenderer.send("continue"));
-  document
-    .querySelector("#execute")
-    .addEventListener("click", () => ipcRenderer.send("execute"));
+  // document
+  //   .querySelector("#screenshot")
+  //   .addEventListener("click", () => ipcRenderer.send("screenshot"));
+  // document
+  //   .querySelector("#continue")
+  //   .addEventListener("click", () => ipcRenderer.send("continue"));
+  // document
+  //   .querySelector("#execute")
+  //   .addEventListener("click", () => ipcRenderer.send("execute"));
 
-  document
-    .querySelector("#mark")
-    .addEventListener("click", () =>
-      webview.send("observer", "screenshot-start")
-    );
-  document
-    .querySelector("#unmark")
-    .addEventListener("click", () =>
-      webview.send("observer", "screenshot-end")
-    );
+  // document
+  //   .querySelector("#mark")
+  //   .addEventListener("click", () =>
+  //     webview.send("observer", "screenshot-start")
+  //   );
+  // document
+  //   .querySelector("#unmark")
+  //   .addEventListener("click", () =>
+  //     webview.send("observer", "screenshot-end")
+  //   );
   // document.querySelector('#export').addEventListener('click', () => ipcRenderer.send('export'));
   // document.querySelector('#randomize').addEventListener('click', () => ipcRenderer.send('randomize'));
 
-  ipcRenderer.on("end_turn", (event, content) => {
+  ipcRenderer.on("end_turn", (event, data) => {
     // Create the message div and its container
     const messageDiv = document.createElement("div");
     messageDiv.className =
       "py-2 px-3 bg-indigo-700 text-indigo-200 rounded-lg shadow-md break-words";
-    messageDiv.textContent = content; // This ensures no HTML or scripts in `content` are executed
+    messageDiv.textContent = data?.thought || data; // This ensures no HTML or scripts in `content` are executed
 
     const containerDiv = document.createElement("div");
     containerDiv.className = "mb-2 mr-8";
@@ -86,6 +86,13 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Scroll to the bottom to show the newest messages
     chatContainer.scrollTop = chatContainer.scrollHeight;
+
+    // Automatically execute the next action when receiving a GPT response
+    if (data?.nextAction?.action !== "done") {
+      setTimeout(() => {
+        ipcRenderer.send("execute");
+      }, 1000);
+    }
   });
 
   function sendMessage() {

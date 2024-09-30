@@ -92,15 +92,28 @@ app.whenReady().then(async () => {
     labelData = JSON.parse(data);
   });
 
-  async function screenshot() {
-    webview.send("observer", "screenshot-start");
-    await sleep(100);
-    const image = await webview.capturePage();
-    webview.send("observer", "screenshot-end");
+  let lastImage;
 
-    // const imageData = image.toPNG();
-    const imageData = image.toJPEG(80);
-    await controller.uploadImageData(imageData);
+  async function screenshot() {
+    // 在标注页面前截图用于判断当前页面是否发生改变，避免再次调用gpt时执行同样的操作
+    const imageBeforeMark = await webview.capturePage();
+    const imageBeforeMarkDataUrl = imageBeforeMark.toDataURL();
+
+    if (lastImage && imageBeforeMarkDataUrl === lastImage) {
+      return false;
+    } else {
+      lastImage = imageBeforeMarkDataUrl;
+
+      webview.send("observer", "screenshot-start");
+      await sleep(100);
+      const image = await webview.capturePage();
+      webview.send("observer", "screenshot-end");
+
+      // const imageData = image.toPNG();
+      const imageData = image.toJPEG(80);
+      await controller.uploadImageData(imageData);
+      return true;
+    }
   }
 
   ipcMain.on("screenshot", async (event, id) => screenshot());
@@ -114,13 +127,17 @@ app.whenReady().then(async () => {
   });
 
   ipcMain.on("continue", async (event, text) => {
-    await screenshot();
-    await controller.send(currentTask);
+    const flag = await screenshot();
+    if (flag) await controller.send(currentTask);
   });
 
   let action = () => {};
   ipcMain.on("execute", async (event, text) => {
     action();
+    setTimeout(async () => {
+      const flag = await screenshot();
+      if (flag) await controller.send(currentTask);
+    }, 2000);
   });
 
   controller.on("message", (message) => {
@@ -131,8 +148,9 @@ app.whenReady().then(async () => {
     if (BrowserWindow.getAllWindows().length === 0) return;
 
     const data = extractJsonFromMarkdown(content);
-    let msg = data === null ? content : data.thought;
-    win.webContents.send("end_turn", msg);
+    console.log("🚀 ~ controller.on ~ data:", data);
+    // let msg = data === null ? content : data.thought;
+    win.webContents.send("end_turn", data || content);
 
     action = () => {
       if (data != null) {

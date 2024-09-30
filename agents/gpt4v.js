@@ -11,7 +11,6 @@ type ClickAction = { action: "click", element: number }
 type TypeAction = { action: "type", element: number, text: string }
 type ScrollAction = { action: "scroll", direction: "up" | "down" }
 type RequestInfoFromUser = { action: "request-info", prompt: string }
-type RememberInfoFromSite = { action: "remember-info", info: string }
 type Done = { action: "done" }
 
 ## response format
@@ -34,17 +33,16 @@ type Done = { action: "done" }
   "nextAction": { "action": "request-info", "prompt": "What is your login information?" }
 }
 {
-  "thought": "Today's doodle is about Henrietta Lacks, remembering that for our blog post"
-  "nextAction": { "action": "remember-info", "info": "Today's doodle is about Henrietta Lacks" }
+  "thought": "The email address of Guangzhou Yundi Technology Co., Ltd. is pengshuangni@163.com"
+  "nextAction": { "action": "done" }
 }
 
 ## stored info
 ${JSON.stringify(info)}
 
 ## instructions
-# observe the screenshot, and think about the next action
-# output your response in a json markdown code block
-# if the next action in response is "remember-info", you should output the info in a json markdown code block and change the next action to "done"
+# 观察截图，如果结果存在截图中则直接在"thought"中返回结果，如果不存在则思考下一步行动
+# 在 json markdown 代码块中用中文输出您的响应
 `;
 
 process.env.OPENAI_API_KEY =
