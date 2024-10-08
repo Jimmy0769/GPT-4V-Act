@@ -25,8 +25,8 @@ window.addEventListener("DOMContentLoaded", () => {
 
 const { ipcRenderer } = require("electron");
 
-// Listen for messages from preload.js to navigate
-ipcRenderer.on("navigate-webview", (event, action, payload) => {
+// Listen for messages from main.js to navigate
+ipcRenderer.on("navigate-view", (event, action, payload) => {
   switch (action) {
     case "goBack":
       if (window.history.length > 1) {
@@ -48,9 +48,9 @@ ipcRenderer.on("navigate-webview", (event, action, payload) => {
 });
 
 // 监听来自主进程的导航请求
-ipcRenderer.on("navigate-webview", (event, url) => {
-  webview.loadURL(url); // 在当前 <webview> 中加载新的 URL
-});
+// ipcRenderer.on("navigate-webview", (event, url) => {
+//   webview.loadURL(url); // 在当前 <webview> 中加载新的 URL
+// });
 
 // Send the current URL whenever it changes
 window.addEventListener("load", () => {

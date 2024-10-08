@@ -3,43 +3,67 @@ const { ipcRenderer } = require("electron");
 document.addEventListener("DOMContentLoaded", function () {
   // mini-browser setup
 
+  // const webview = document.getElementById("webview");
+  function updateViewSize() {
+    const viewBox = document.getElementById("webviewPlaceholder");
+
+    // 获取占位元素的大小和位置
+    const rect = viewBox.getBoundingClientRect();
+    const rectData = {
+      width: Math.round(rect.width),
+      height: Math.round(rect.height),
+      x: Math.round(rect.x),
+      y: Math.round(rect.y),
+    };
+
+    ipcRenderer.send("set-view-size", rectData);
+  }
+
+  // 初始化view宽高和位置
+  updateViewSize();
+
+  ipcRenderer.on("update-view-size", updateViewSize);
+
   const urlInput = document.getElementById("urlInput");
-  const webview = document.getElementById("webview");
 
   document.getElementById("backButton").addEventListener("click", () => {
-    webview.send("navigate-webview", "goBack");
+    // webview.send("navigate-webview", "goBack");
+    ipcRenderer.send("navigate-view", "goBack");
   });
 
   document.getElementById("forwardButton").addEventListener("click", () => {
-    webview.send("navigate-webview", "goForward");
+    // webview.send("navigate-webview", "goForward");
+    ipcRenderer.send("navigate-view", "goForward");
   });
 
   document.getElementById("reloadButton").addEventListener("click", () => {
-    webview.send("navigate-webview", "reload");
+    // webview.send("navigate-webview", "reload");
+    ipcRenderer.send("navigate-view", "reload");
   });
 
   urlInput.addEventListener("keypress", (e) => {
     if (e.key === "Enter") {
-      webview.send("navigate-webview", "loadURL", urlInput.value);
+      // webview.send("navigate-webview", "loadURL", urlInput.value);
+      ipcRenderer.send("navigate-view", "loadURL", urlInput.value);
     }
   });
 
-  webview.addEventListener("will-navigate", (details) => {
-    console.log("🚀 ~ webview.addEventListener ~ details:", details);
-    urlInput.value = details.url;
-  });
+  // webview.addEventListener("will-navigate", (details) => {
+  //   console.log("🚀 ~ webview.addEventListener ~ details:", details);
+  //   urlInput.value = details.url;
+  // });
 
   ipcRenderer.on("update-url", (event, url) => {
     urlInput.value = url;
   });
 
-  webview.addEventListener("dom-ready", () => {
-    console.log(
-      "🚀 ~ webview.addEventListener ~ webview.getWebContentsId():",
-      webview.getWebContentsId()
-    );
-    ipcRenderer.send("webview-ready", webview.getWebContentsId());
-  });
+  // webview.addEventListener("dom-ready", () => {
+  //   console.log(
+  //     "🚀 ~ webview.addEventListener ~ webview.getWebContentsId():",
+  //     webview.getWebContentsId()
+  //   );
+  //   ipcRenderer.send("webview-ready", webview.getWebContentsId());
+  // });
 
   // Agent stuff
 

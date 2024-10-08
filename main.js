@@ -1,4 +1,10 @@
-const { app, BrowserWindow, ipcMain, webContents } = require("electron");
+const {
+  app,
+  BrowserWindow,
+  ipcMain,
+  webContents,
+  BrowserView,
+} = require("electron");
 const { promisify } = require("util");
 const path = require("node:path");
 const fs = require("fs/promises");
@@ -6,6 +12,7 @@ const fs = require("fs/promises");
 const sleep = promisify(setTimeout);
 
 let win;
+let view;
 
 // const { GPT4V, LLaVa } = require('./agents');
 const { GPT4V } = require("./agents");
@@ -44,18 +51,47 @@ function createWindow() {
     },
   });
 
-  // win.webContents.openDevTools();
+  view = new BrowserView({
+    webPreferences: {
+      preload: path.join(__dirname, "preload-view.js"),
+      contextIsolation: false,
+      nodeIntegration: true,
+    },
+  });
+  win.setBrowserView(view);
+  view.webContents.loadURL("https://www.tianyancha.com");
+  view.setBounds({ x: 0, y: 0, width: 400, height: 400 });
+
+  win.webContents.openDevTools();
 
   // 处理外部链接打开行为
-  win.webContents.setWindowOpenHandler(({ url }) => {
-    console.log("🚀 ~ win.webContents.setWindowOpenHandler ~ url:", url);
+  view.webContents.setWindowOpenHandler(({ url }) => {
+    console.log("🚀 ~ view.webContents.setWindowOpenHandler ~ url:", url);
     // 告诉渲染进程中的 <webview> 加载新 URL
-    mainWindow.webContents.send("navigate-webview", url);
+    view.webContents.loadURL(url);
     return { action: "deny" }; // 阻止默认行为（阻止新窗口打开）
+  });
+
+  view.webContents.on("will-navigate", (event, navigationUrl) => {
+    console.log("🚀 ~ view.webContents.on ~ navigationUrl:", navigationUrl);
+    win.webContents.send("update-url", navigationUrl);
   });
 
   ipcMain.on("current-url", (event, url) => {
     win.webContents.send("update-url", url);
+  });
+
+  ipcMain.on("set-view-size", (event, size) => {
+    view.setBounds(size);
+  });
+
+  // 窗口大小变化时需要同步更新view的大小和位置
+  win.on("resize", () => {
+    win.webContents.send("update-view-size");
+  });
+
+  ipcMain.on("navigate-view", (event, action, payload) => {
+    view.webContents.send("navigate-view", action, payload);
   });
 
   win.loadFile("index.html");
@@ -72,21 +108,12 @@ app.whenReady().then(async () => {
     }
   });
 
-  app.on("web-contents-created", (e, wc) => {
-    // wc: webContents of <webview> is now under control
-    wc.setWindowOpenHandler((handler) => {
-      console.log("🚀 ~ wc.setWindowOpenHandler ~ handler:", handler);
-      wc.loadURL(handler.url);
-      return { action: "deny" }; // deny or allow
-    });
-  });
-
-  let webview;
+  // let webview;
   let labelData;
-  ipcMain.on("webview-ready", async (event, id) => {
-    webview = webContents.fromId(id);
-    console.log(`Acquired webviewId ${id}`);
-  });
+  // ipcMain.on("webview-ready", async (event, id) => {
+  //   webview = webContents.fromId(id);
+  //   console.log(`Acquired webviewId ${id}`);
+  // });
 
   ipcMain.on("label-data", (event, data) => {
     labelData = JSON.parse(data);
@@ -96,7 +123,7 @@ app.whenReady().then(async () => {
 
   async function screenshot() {
     // 在标注页面前截图用于判断当前页面是否发生改变，避免再次调用gpt时执行同样的操作
-    const imageBeforeMark = await webview.capturePage();
+    const imageBeforeMark = await view.webContents.capturePage();
     const imageBeforeMarkDataUrl = imageBeforeMark.toDataURL();
 
     if (lastImage && imageBeforeMarkDataUrl === lastImage) {
@@ -104,10 +131,10 @@ app.whenReady().then(async () => {
     } else {
       lastImage = imageBeforeMarkDataUrl;
 
-      webview.send("observer", "screenshot-start");
+      view.webContents.send("observer", "screenshot-start");
       await sleep(100);
-      const image = await webview.capturePage();
-      webview.send("observer", "screenshot-end");
+      const image = await view.webContents.capturePage();
+      view.webContents.send("observer", "screenshot-end");
 
       // const imageData = image.toPNG();
       const imageData = image.toJPEG(80);
@@ -164,13 +191,13 @@ app.whenReady().then(async () => {
           case "click":
             console.log(`clicking ${JSON.stringify(label)}`);
             let { x, y } = label;
-            webview.sendInputEvent({
+            view.webContents.sendInputEvent({
               type: "mouseDown",
               x,
               y,
               clickCount: 1,
             });
-            webview.sendInputEvent({
+            view.webContents.sendInputEvent({
               type: "mouseUp",
               x,
               y,
@@ -184,13 +211,13 @@ app.whenReady().then(async () => {
               )}`
             );
             let { x, y } = label;
-            webview.sendInputEvent({
+            view.webContents.sendInputEvent({
               type: "mouseDown",
               x,
               y,
               clickCount: 1,
             });
-            webview.sendInputEvent({
+            view.webContents.sendInputEvent({
               type: "mouseUp",
               x,
               y,
@@ -198,7 +225,7 @@ app.whenReady().then(async () => {
             });
 
             for (let char of data.nextAction.text) {
-              webview.sendInputEvent({
+              view.webContents.sendInputEvent({
                 type: "char",
                 keyCode: char,
               });
